@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrismaForge | AI Style Transfer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --card-bg: rgba(255, 255, 255, 0.02);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #06b6d4; /* Electric Cyan */
+            --secondary: #d946ef; /* Hot Fuchsia */
+            --text-main: #fafafa;
+            --text-muted: #a1a1aa;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: radial-gradient(circle at 15% 50%, rgba(6, 182, 212, 0.15), transparent 25%),
+                              radial-gradient(circle at 85% 30%, rgba(217, 70, 239, 0.15), transparent 25%);
+        }
+
+        h1, h2, h3, h4, h5, .navbar-brand {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: rgba(5, 5, 5, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--card-border);
+            padding: 1rem 0;
+        }
+        .navbar-brand {
+            font-weight: 800;
+            font-size: 1.5rem;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff 0%, #67e8f9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .nav-link {
+            color: var(--text-muted) !important;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
+        }
+        .nav-link:hover {
+            color: #fff !important;
+        }
+        .btn-signin {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 50px;
+            padding: 0.4rem 1.2rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+        .btn-signin:hover {
+            background: #fff;
+            color: var(--bg-color);
+        }
+
+        /* Hero */
+        .hero {
+            padding: 8rem 0 4rem;
+            text-align: center;
+        }
+        .hero-title {
+            font-size: clamp(2.5rem, 5vw, 4.5rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1rem;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #fff 0%, #e879f9 40%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Glass Cards */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Upload Zones */
+        .upload-zone {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(6, 182, 212, 0.05);
+        }
+        .upload-zone input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .upload-zone img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            z-index: 5;
+            background: #000;
+        }
+        .upload-prompt {
+            text-align: center;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .upload-prompt i {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+        .upload-prompt p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+        .upload-prompt span {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Slider */
+        .slider-container {
+            margin: 3rem auto;
+            max-width: 500px;
+            text-align: center;
+        }
+        .slider-label {
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #e2e8f0;
+        }
+        .slider-val-badge {
+            background: rgba(6, 182, 212, 0.2);
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+            border: 2px solid var(--primary);
+            transition: transform 0.2s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        /* Button */
+        .btn-generate {
+            background: linear-gradient(135deg, #06b6d4 0%, #d946ef 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 1rem 3rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px -5px rgba(6, 182, 212, 0.5);
+            width: 100%;
+            max-width: 300px;
+        }
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px -5px rgba(217, 70, 239, 0.6);
+            color: white;
+        }
+
+        /* Results */
+        .result-card {
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.05);
+            margin-top: 2rem;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .result-img-wrapper {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .result-img-wrapper img {
+            max-height: 500px;
+            object-fit: contain;
+            width: 100%;
+        }
+
+        /* Examples */
+        .example-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            height: 100%;
+        }
+        .example-img-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .example-img-grid img, .example-result img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        .example-result img {
+            height: 250px;
+        }
+        .example-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--card-border);
+            margin-top: 6rem;
+            padding: 4rem 0 2rem;
+        }
+
+        /* Loader */
+        .loader-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 5, 5, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .loader-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+        .floating-element {
+            animation: float 6s ease-in-out infinite;
+            transform-style: preserve-3d;
+        }
+
+        /* Responsive tweaks */
+        @media (max-width: 768px) {
+            .hero { padding: 6rem 1rem 3rem; }
+            .glass-card { padding: 1.5rem; }
+            .upload-zone { height: 250px; }
+            .example-img-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fa-solid fa-wand-magic-sparkles me-2 text-primary"></i>PrismaForge</a>
+            <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <i class="fa-solid fa-bars text-white"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mx-auto">
+                    <li class="nav-item"><a class="nav-link" href="#">Studio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#examples">Gallery</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
+                </ul>
+                <a href="#" class="btn-signin mt-3 mt-lg-0 d-inline-block">Sign In</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero container">
+        <h1 class="hero-title">Forge Reality with AI.</h1>
+        <p class="hero-subtitle">Upload any photo and instantly reimagine it in the style of famous artists, sketches, or abstract masterpieces using our advanced neural networks.</p>
+    </section>
+
+    <!-- Main Workspace -->
+    <main class="container mb-5">
+        <form method="post" enctype="multipart/form-data" id="uploadForm" onsubmit="document.getElementById('loader').classList.add('active');">
+            {{ form.hidden_tag() }}
+            
+            <div class="row g-4 justify-content-center">
+                <!-- Content Image -->
+                <div class="col-md-6 col-lg-5">
+                    <div class="glass-card h-100 floating-element" data-tilt data-tilt-max="5" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15" data-tilt-perspective="1000">
+                        <h4 class="text-center mb-4 fs-5">1. Source Image</h4>
+                        <div class="upload-zone" id="contentZone">
+                            <div class="upload-prompt" id="contentPrompt" {% if content_image %}style="display:none;"{% endif %}>
+                                <i class="fa-regular fa-image"></i>
+                                <p><span>Click to upload</span> or drag and drop</p>
+                                <p class="text-muted small mt-1">PNG, JPG up to 10MB</p>
+                            </div>
+                            {% if content_image %}
+                                <img src="{{ url_for('send_image', filename=content_image) }}" id="contentPreviewImg" alt="Content">
+                            {% else %}
+                                <img src="" id="contentPreviewImg" style="display:none;" alt="Content">
+                            {% endif %}
+                            {{ form.content(class="file-input", accept="image/*", onchange="previewFile(this, 'contentPreviewImg', 'contentPrompt')") }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Style Image -->
+                <div class="col-md-6 col-lg-5">
+                    <div class="glass-card h-100 floating-element" style="animation-delay: 1.5s;" data-tilt data-tilt-max="5" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15" data-tilt-perspective="1000">
+                        <h4 class="text-center mb-4 fs-5">2. Style Reference</h4>
+                        <div class="upload-zone" id="styleZone">
+                            <div class="upload-prompt" id="stylePrompt" {% if style_image %}style="display:none;"{% endif %}>
+                                <i class="fa-solid fa-palette"></i>
+                                <p><span>Click to upload</span> or drag and drop</p>
+                                <p class="text-muted small mt-1">Select an artistic style</p>
+                            </div>
+                            {% if style_image %}
+                                <img src="{{ url_for('send_image', filename=style_image) }}" id="stylePreviewImg" alt="Style">
+                            {% else %}
+                                <img src="" id="stylePreviewImg" style="display:none;" alt="Style">
+                            {% endif %}
+                            {{ form.style(class="file-input", accept="image/*", onchange="previewFile(this, 'stylePreviewImg', 'stylePrompt')") }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="slider-container glass-card mt-4 floating-element" style="animation-delay: 3s;" data-tilt data-tilt-max="3" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.1">
+                
+                <div class="row mb-5 text-start">
+                    <div class="col-12">
+                        <label class="form-label mb-3" style="font-weight: 600; color: #e2e8f0; font-family: 'Plus Jakarta Sans', sans-serif;">Output Resolution</label>
+                        {{ form.resolution(class="form-select bg-dark text-white border-secondary mb-2", style="border-radius: 12px; padding: 10px 15px;") }}
+                        <div class="form-text text-muted small">Higher resolution gives sharper photos but finer, less abstract brush strokes.</div>
+                    </div>
+                </div>
+
+                <div class="slider-label">
+                    <span>Stylization Strength</span>
+                    <span class="slider-val-badge" id="alphaValueDisplay">100%</span>
+                </div>
+                {{ form.alpha(type="range", min="0", max="1", step="0.1", id="alphaSlider", value=form.alpha.data|default(1.0), oninput="document.getElementById('alphaValueDisplay').innerText = Math.round(this.value * 100) + '%'") }}
+                
+                <div class="mt-5">
+                    {{ form.submit(class="btn-generate", value="Generate Art") }}
+                </div>
+            </div>
+        </form>
+
+        <!-- Result -->
+        {% if result_image %}
+        <div class="row justify-content-center" id="resultSection">
+            <div class="col-lg-10">
+                <div class="result-card">
+                    <div class="p-3 bg-dark bg-opacity-50 border-bottom border-success border-opacity-25 d-flex justify-content-between align-items-center">
+                        <span class="text-success fw-bold"><i class="fa-solid fa-check-circle me-2"></i>Generation Complete</span>
+                        <a href="{{ url_for('send_image', filename=result_image) }}" download class="btn btn-sm btn-outline-success rounded-pill px-3">Download <i class="fa-solid fa-download ms-1"></i></a>
+                    </div>
+                    <div class="result-img-wrapper">
+                        <img src="{{ url_for('send_image', filename=result_image) }}" alt="Stylized Result">
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="alert alert-danger mt-4 text-center rounded-4 border-0 bg-danger bg-opacity-10 text-danger" role="alert">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i> {{ error }}
+        </div>
+        {% endif %}
+    </main>
+
+    <!-- Examples Gallery -->
+    <section id="examples" class="container mt-5 pt-5">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold mb-3">Inspiration Gallery</h2>
+            <p class="text-muted">See what PrismaForge can create by blending reality with art.</p>
+        </div>
+        
+        <div class="row g-4 justify-content-center">
+            <!-- User Example -->
+            <div class="col-12 col-xl-10">
+                <div class="example-card floating-element p-4 p-md-5" data-tilt data-tilt-max="2" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.1">
+                    <div class="row align-items-center text-center g-4">
+                        
+                        <!-- Source -->
+                        <div class="col-md-4">
+                            <div class="example-label mb-3 fs-6">Source Image</div>
+                            <div class="overflow-hidden rounded-4 border border-secondary border-opacity-25" style="height: 350px;">
+                                <img src="{{ url_for('send_example', filename='content.jpeg') }}" class="w-100 h-100" style="object-fit: cover;" alt="Source">
+                            </div>
+                        </div>
+                        
+                        <!-- Style -->
+                        <div class="col-md-4">
+                            <div class="example-label mb-3 fs-6">Style Reference</div>
+                            <div class="overflow-hidden rounded-4 border border-secondary border-opacity-25" style="height: 350px;">
+                                <img src="{{ url_for('send_example', filename='style 1.png') }}" class="w-100 h-100" style="object-fit: cover;" alt="Style">
+                            </div>
+                        </div>
+                        
+                        <!-- Result -->
+                        <div class="col-md-4">
+                            <div class="example-label text-primary mb-3 fs-6 fw-bold"><i class="fa-solid fa-wand-magic-sparkles me-2"></i>Neural Result</div>
+                            <div class="overflow-hidden rounded-4 shadow-lg border border-primary border-opacity-50" style="height: 380px; margin-top: -15px;">
+                                <img src="{{ url_for('send_example', filename='result1.jpeg') }}" class="w-100 h-100" style="object-fit: cover;" alt="Result">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container text-center">
+            <h4 class="mb-3"><i class="fa-solid fa-wand-magic-sparkles me-2 text-primary"></i>PrismaForge</h4>
+            <p class="text-muted small mb-4">Empowering creators with neural artistry.</p>
+            <div class="d-flex justify-content-center gap-3 mb-4">
+                <a href="#" class="text-muted"><i class="fa-brands fa-github fs-5"></i></a>
+                <a href="#" class="text-muted"><i class="fa-brands fa-twitter fs-5"></i></a>
+                <a href="#" class="text-muted"><i class="fa-brands fa-discord fs-5"></i></a>
+            </div>
+            <p class="text-muted small mb-0">&copy; 2026 PrismaForge. All rights reserved. | hello@prismaforge.ai</p>
+        </div>
+    </footer>
+
+    <!-- Loader -->
+    <div class="loader-overlay" id="loader">
+        <div class="spinner"></div>
+        <h4 class="mb-2 text-white">Forging Art...</h4>
+        <p class="text-muted small">The neural network is processing your images.</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+    <script>
+        // File Preview Logic
+        function previewFile(input, imgId, promptId) {
+            const file = input.files[0];
+            const imgElement = document.getElementById(imgId);
+            const promptElement = document.getElementById(promptId);
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imgElement.src = e.target.result;
+                    imgElement.style.display = 'block';
+                    promptElement.style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Drag and drop visuals
+        document.querySelectorAll('.upload-zone').forEach(zone => {
+            const input = zone.querySelector('input[type="file"]');
+            
+            ['dragenter', 'dragover'].forEach(evt => {
+                input.addEventListener(evt, () => zone.classList.add('dragover'));
+            });
+            ['dragleave', 'drop'].forEach(evt => {
+                input.addEventListener(evt, () => zone.classList.remove('dragover'));
+            });
+        });
+
+        // Initialize slider value on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const slider = document.getElementById('alphaSlider');
+            const display = document.getElementById('alphaValueDisplay');
+            if (slider && display) {
+                display.innerText = Math.round(slider.value * 100) + '%';
+            }
+            
+            // Scroll to results if they exist
+            const resultSection = document.getElementById('resultSection');
+            if (resultSection) {
+                resultSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    </script>
+</body>
+</html>
