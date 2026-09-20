@@ -4,12 +4,13 @@ from unittest import result
 from torch import device
 from sympy import content
 import os
+import gc
 import torch
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 from flask_wtf import FlaskForm
 from flask_bootstrap import Bootstrap
 from werkzeug.utils import secure_filename
-from wtforms import FileField, SubmitField, FloatField, HiddenField
+from wtforms import FileField, SubmitField, FloatField, HiddenField, SelectField
 from wtforms.validators import InputRequired
 from PIL import Image
 from torchvision import transforms
@@ -31,13 +32,14 @@ class UploadForm(FlaskForm):
     content_path = HiddenField()
     style_path = HiddenField()
     alpha = FloatField("Alpha",default=1.0)
+    resolution = SelectField("Resolution", choices=[('256', 'Low (256px) - Faster'), ('512', 'Medium (512px) - Recommended'), ('1024', 'High (1024px) - Slow')], default='512')
     submit = SubmitField("Transfer Style")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-encoder = VGGEncoder(r"C:\Major projects\NST-Neural Style Transfer\vgg_normalised.pth").to(device)
+encoder = VGGEncoder("vgg_normalised.pth").to(device)
 decoder = Decoder().to(device)
-state_dict = torch.load(r"C:\Major projects\NST-Neural Style Transfer\decoder_final.pth")
+state_dict = torch.load("decoder_final.pth", map_location=device)
 for k in list(state_dict.keys()):
     if k.startswith('net.'):
         state_dict[k.replace('net.', 'decoder.')] = state_dict.pop(k)
@@ -53,16 +55,29 @@ def style_transfer(content_img,style_img,alpha,resolution,encoder,decoder,device
 
     res = int(resolution)
 
-    content_transform = transforms.Compose([
-        transforms.Resize(res),
-        transforms.ToTensor(),
+    def get_target_size(img, max_res):
+        w, h = img.size
+        if max(w, h) <= max_res:
+            return (h, w)
+        if w > h:
+            new_w = max_res
+            new_h = int(h * (max_res / w))
+        else:
+            new_h = max_res
+            new_w = int(w * (max_res / h))
+        return (new_h, new_w)
 
+    content_size = get_target_size(content_img, res)
+    style_size = get_target_size(style_img, res)
+
+    content_transform = transforms.Compose([
+        transforms.Resize(content_size),
+        transforms.ToTensor(),
     ])
 
     style_transform = transforms.Compose([
-        transforms.Resize(res),
+        transforms.Resize(style_size),
         transforms.ToTensor(),
-       
     ])
 
     content_img = content_transform(content_img).unsqueeze(0).to(device)
@@ -76,6 +91,12 @@ def style_transfer(content_img,style_img,alpha,resolution,encoder,decoder,device
         stylized_feats = alpha * stylized_feats + (1 - alpha) * content_feats
         
         styled_img = decoder(stylized_feats)
+
+    # Free up memory explicitly to prevent deployment crashes
+    del content_img, style_img, content_feats, style_feats, stylized_feats
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
 
     return styled_img
 
